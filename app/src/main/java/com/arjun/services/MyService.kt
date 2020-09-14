@@ -2,8 +2,7 @@ package com.arjun.services
 
 import android.app.Service
 import android.content.Intent
-import android.os.Binder
-import android.os.IBinder
+import android.os.*
 import timber.log.Timber
 import kotlin.random.Random
 
@@ -18,13 +17,27 @@ class MyService : Service() {
     val getRandomNumber
         get() = randomNumber
 
-    inner class MyServiceBinder : Binder() {
-        val getService: MyService
-            get() = this@MyService
+    inner class RandomNumberRequestHandler : Handler() {
+        override fun handleMessage(msg: Message) {
+            if (msg.what == GET_RANDOM_NUMBER_FLAG) {
+                val message = Message.obtain(null, GET_RANDOM_NUMBER_FLAG)
+                message.arg1 = getRandomNumber
+
+                try {
+                    msg.replyTo.send(message)
+                } catch (e: Exception) {
+                    Timber.e(e)
+                }
+            }
+            super.handleMessage(msg)
+        }
     }
 
 
-    private val mBinder: IBinder = MyServiceBinder()
+    /**
+     * Messenger is just a wrapper around Binder
+     */
+    private val randomNumberMessenger = Messenger(RandomNumberRequestHandler())
 
 
     override fun onCreate() {
@@ -48,7 +61,7 @@ class MyService : Service() {
     override fun onBind(intent: Intent?): IBinder? {
         Timber.d("onBind")
 
-        return mBinder
+        return randomNumberMessenger.binder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -80,6 +93,10 @@ class MyService : Service() {
 
     private fun stopRandomNumberGenerator() {
         isRandomGeneratorOn = false
+    }
+
+    companion object {
+        const val GET_RANDOM_NUMBER_FLAG = 0
     }
 
 }

@@ -1,85 +1,78 @@
 package com.arjun.services
 
-import android.app.IntentService
-import android.app.Service
-import android.content.Intent
-import android.os.*
+import android.app.job.JobParameters
+import android.app.job.JobService
+import android.os.Handler
+import android.widget.Toast
 import timber.log.Timber
+import java.util.*
 import kotlin.random.Random
 
-class MyService : IntentService(MyService::class.java.canonicalName) {
+class MyService : JobService() {
 
     private var randomNumber: Int = 0
     private var isRandomGeneratorOn: Boolean = false
 
     private val MIN = 0
     private val MAX = 100
+    private val handler = Handler()
+    private var timer: Timer? = null
 
-    val getRandomNumber
-        get() = randomNumber
-
-    inner class RandomNumberRequestHandler : Handler() {
-        override fun handleMessage(msg: Message) {
-            if (msg.what == GET_RANDOM_NUMBER_FLAG) {
-                val message = Message.obtain(null, GET_RANDOM_NUMBER_FLAG)
-                message.arg1 = getRandomNumber
-
-                try {
-                    msg.replyTo.send(message)
-                } catch (e: Exception) {
-                    Timber.e(e)
-                }
+    inner class Toaster : TimerTask() {
+        override fun run() {
+            handler.post {
+                Toast.makeText(applicationContext, "Toast", Toast.LENGTH_SHORT).show()
             }
-            super.handleMessage(msg)
         }
+
     }
-
-
-    /**
-     * Messenger is just a wrapper around Binder
-     */
-    private val randomNumberMessenger = Messenger(RandomNumberRequestHandler())
-
 
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
+        timer = Timer()
     }
 
-    override fun onHandleIntent(intent: Intent?) {
-        Timber.d("onHandleIntent")
+    /**
+     * return true for long duration tasks
+     * return false for short duration tasks
+     *
+     * runs on UI thread by default, spawn a new thread when doing some
+     * long running tasks
+     */
+    override fun onStartJob(params: JobParameters?): Boolean {
+        Timber.d("onStartJob")
         isRandomGeneratorOn = true
-        startRandomNumberGenerator()
+        timer?.scheduleAtFixedRate(Toaster(), 0, 3000)
+        Thread {
+            startRandomNumberGenerator(null)
+        }.start()
+        return true
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Timber.d("onStartCommand")
-        return super.onStartCommand(intent, flags, startId)
-    }
-    override fun onBind(intent: Intent?): IBinder? {
-        Timber.d("onBind")
-
-        return randomNumberMessenger.binder
-    }
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        Timber.d("onUnbind")
-        return super.onUnbind(intent)
+    /**
+     * return true to restart when resources are available
+     * return false when there is no need to restart the service
+     */
+    override fun onStopJob(params: JobParameters?): Boolean {
+        Timber.d("onStopJob")
+        timer?.cancel()
+        isRandomGeneratorOn = false
+        return true
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        stopRandomNumberGenerator()
         Timber.d("onDestroy")
     }
 
-    private fun startRandomNumberGenerator() {
+    private fun startRandomNumberGenerator(starter: String?) {
         while (isRandomGeneratorOn) {
             try {
                 Thread.sleep(1000)
                 if (isRandomGeneratorOn) {
                     randomNumber = Random.nextInt(MAX) + MIN
-                    Timber.d("${Thread.currentThread().id} Random Number: $randomNumber")
+                    Timber.d("${Thread.currentThread().id} Random Number: $randomNumber $starter")
                 }
             } catch (e: Exception) {
                 Timber.d("Thread Interrupted")
@@ -88,13 +81,8 @@ class MyService : IntentService(MyService::class.java.canonicalName) {
         }
     }
 
-
-    private fun stopRandomNumberGenerator() {
-        isRandomGeneratorOn = false
-    }
-
     companion object {
-        const val GET_RANDOM_NUMBER_FLAG = 0
+        var JOB_ID = 101
     }
 
 }

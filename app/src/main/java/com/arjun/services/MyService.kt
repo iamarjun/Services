@@ -1,13 +1,12 @@
 package com.arjun.services
 
-import android.app.IntentService
-import android.app.Service
+import android.content.Context
 import android.content.Intent
-import android.os.*
+import androidx.core.app.JobIntentService
 import timber.log.Timber
 import kotlin.random.Random
 
-class MyService : IntentService(MyService::class.java.canonicalName) {
+class MyService : JobIntentService() {
 
     private var randomNumber: Int = 0
     private var isRandomGeneratorOn: Boolean = false
@@ -15,38 +14,13 @@ class MyService : IntentService(MyService::class.java.canonicalName) {
     private val MIN = 0
     private val MAX = 100
 
-    val getRandomNumber
-        get() = randomNumber
-
-    inner class RandomNumberRequestHandler : Handler() {
-        override fun handleMessage(msg: Message) {
-            if (msg.what == GET_RANDOM_NUMBER_FLAG) {
-                val message = Message.obtain(null, GET_RANDOM_NUMBER_FLAG)
-                message.arg1 = getRandomNumber
-
-                try {
-                    msg.replyTo.send(message)
-                } catch (e: Exception) {
-                    Timber.e(e)
-                }
-            }
-            super.handleMessage(msg)
-        }
-    }
-
-
-    /**
-     * Messenger is just a wrapper around Binder
-     */
-    private val randomNumberMessenger = Messenger(RandomNumberRequestHandler())
-
 
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
     }
 
-    override fun onHandleIntent(intent: Intent?) {
+    override fun onHandleWork(intent: Intent) {
         Timber.d("onHandleIntent")
         isRandomGeneratorOn = true
         startRandomNumberGenerator()
@@ -55,16 +29,6 @@ class MyService : IntentService(MyService::class.java.canonicalName) {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Timber.d("onStartCommand")
         return super.onStartCommand(intent, flags, startId)
-    }
-    override fun onBind(intent: Intent?): IBinder? {
-        Timber.d("onBind")
-
-        return randomNumberMessenger.binder
-    }
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        Timber.d("onUnbind")
-        return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
@@ -94,7 +58,10 @@ class MyService : IntentService(MyService::class.java.canonicalName) {
     }
 
     companion object {
-        const val GET_RANDOM_NUMBER_FLAG = 0
+        const val JOB_ID = 101
+        fun enqueue(context: Context, intent: Intent) {
+            enqueueWork(context, MyService::class.java, JOB_ID, intent)
+        }
     }
 
 }

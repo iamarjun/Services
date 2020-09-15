@@ -14,11 +14,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         start_service.setOnClickListener {
-            startService(serviceIntent)
+            MyService.enqueue(this, serviceIntent)
         }
 
         stop_service.setOnClickListener {
-            stopService(serviceIntent)
+//            stopService(serviceIntent)
         }
 
     }

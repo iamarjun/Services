@@ -1,5 +1,6 @@
 package com.arjun.services
 
+import android.app.IntentService
 import android.app.Service
 import android.content.Intent
 import android.os.Binder
@@ -7,7 +8,7 @@ import android.os.IBinder
 import timber.log.Timber
 import kotlin.random.Random
 
-class MyService : Service() {
+class MyService : IntentService(MyService::class.java.canonicalName) {
 
     private var randomNumber: Int = 0
     private var isRandomGeneratorOn: Boolean = false
@@ -35,14 +36,10 @@ class MyService : Service() {
     /**
      * Gets executed whenever we start a service
      */
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onHandleIntent(intent: Intent?) {
         Timber.d("onStartCommand")
         isRandomGeneratorOn = true
-        Thread {
-            startRandomNumberGenerator()
-        }.start()
-
-        return START_STICKY
+        startRandomNumberGenerator()
     }
 
     override fun onBind(intent: Intent?): IBinder? {

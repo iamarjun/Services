@@ -1,12 +1,13 @@
 package com.arjun.services
 
+import android.app.IntentService
 import android.app.Service
 import android.content.Intent
 import android.os.*
 import timber.log.Timber
 import kotlin.random.Random
 
-class MyService : Service() {
+class MyService : IntentService(MyService::class.java.canonicalName) {
 
     private var randomNumber: Int = 0
     private var isRandomGeneratorOn: Boolean = false
@@ -45,19 +46,16 @@ class MyService : Service() {
         Timber.d("onCreate")
     }
 
-    /**
-     * Gets executed whenever we start a service
-     */
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Timber.d("onStartCommand")
+    override fun onHandleIntent(intent: Intent?) {
+        Timber.d("onHandleIntent")
         isRandomGeneratorOn = true
-        Thread {
-            startRandomNumberGenerator()
-        }.start()
-
-        return START_STICKY
+        startRandomNumberGenerator()
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Timber.d("onStartCommand")
+        return super.onStartCommand(intent, flags, startId)
+    }
     override fun onBind(intent: Intent?): IBinder? {
         Timber.d("onBind")
 
@@ -81,7 +79,7 @@ class MyService : Service() {
                 Thread.sleep(1000)
                 if (isRandomGeneratorOn) {
                     randomNumber = Random.nextInt(MAX) + MIN
-                    Timber.d("${Thread.currentThread().name} Random Number: $randomNumber")
+                    Timber.d("${Thread.currentThread().id} Random Number: $randomNumber")
                 }
             } catch (e: Exception) {
                 Timber.d("Thread Interrupted")
